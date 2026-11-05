@@ -12,7 +12,7 @@ How it works in detail: [HOW-IT-WORKS.md](HOW-IT-WORKS.md).
 
 ## Download
 
-`30FPSGrassFix-1.0.0.7z` from the [Releases page](https://github.com/qahtni/kcd1-30fps-grass-fix/releases/latest). It contains:
+`30FPSGrassFix-1.0.0.7z` from the [Releases page](https://github.com/qahtni/kcd1-30fps-grass-fix/releases/latest) or [Nexus Mods](https://www.nexusmods.com/kingdomcomedeliverance/mods/2457). It contains:
 
 - `install/KCDGrassFix.asi`: the fix. When the game starts it finds the grass code in `WHGame.dll` and adds the blend, in memory only. No game file is changed.
 - `install/version.dll`: [Ultimate ASI Loader](https://github.com/ThirteenAG/Ultimate-ASI-Loader) 10.0.2 by ThirteenAG (MIT license, included). It loads `.asi` plugins.
