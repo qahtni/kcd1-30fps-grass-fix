@@ -1,38 +1,59 @@
 @echo off
 setlocal EnableExtensions DisableDelayedExpansion
-rem 30 FPS Grass Fix 1.0.0 - installer for Windows.
+rem 30 FPS Grass and Water Fix 1.1.0 - installer for Windows.
 rem Double-click it in the extracted archive, wherever that is (for example Downloads).
 rem It finds the game itself: in every Steam library, else in the GOG Galaxy and Epic default
 rem folders. To pick a folder yourself, drag the game folder onto this file.
 rem What it does (nothing else):
 rem   1. Checks the game is closed.
-rem   2. Copies install\KCDGrassFix.asi and install\version.dll (Ultimate ASI Loader) to Bin\Win64,
-rem      next to KingdomCome.exe. A different version.dll that is already there is left alone.
-rem   3. Copies the uninstaller to the game folder as 30FPSGrassFix-Uninstall.bat.
+rem   2. Copies install\KCDGrassFix.asi (grass), install\KCDWater.asi (water ripples) and
+rem      install\version.dll (Ultimate ASI Loader) to Bin\Win64, next to KingdomCome.exe.
+rem      A different version.dll that is already there is left alone.
+rem      If the mod "Native DLSS Support" (KCDDLSS.asi) is installed: it already contains the grass
+rem      fix, so the grass plugin is stored as KCDGrassFix.asi.off (not loaded; the DLSS uninstaller
+rem      turns it back on). The water plugin is installed as usual.
+rem   3. Copies the uninstaller to the game folder as 30FPSGrassWaterFix-Uninstall.bat (and removes
+rem      30FPSGrassFix-Uninstall.bat of version 1.0.0).
 rem No game file is changed. Windows needs no launch option: it loads version.dll from the game
 rem folder by itself. Files are recognised by their exact size in bytes.
-title 30 FPS Grass Fix - install
+title 30 FPS Grass ^& Water Fix - install
 set "ASI_SIZE=@ASI_SIZE@"
+set "WATER_SIZE=@WATER_SIZE@"
 set "UAL_SIZE=@UAL_SIZE@"
 set "SELF=%~dp0"
 set "SELF=%SELF:~0,-1%"
 set "ARG=%~1"
-echo 30 FPS Grass Fix 1.0.0 - install
+echo 30 FPS Grass ^& Water Fix 1.1.0 - install
 call :findgame
 if not defined GAME goto :nogame
 echo Game folder: "%GAME%"
 set "B=%GAME%\Bin\Win64"
 tasklist /fi "imagename eq KingdomCome.exe" 2>nul | find /i "KingdomCome.exe" >nul && goto :running
 if not exist "%SELF%\install\KCDGrassFix.asi" (set "ERR=install\KCDGrassFix.asi is missing from the extracted folder." & goto :fail)
+if not exist "%SELF%\install\KCDWater.asi" (set "ERR=install\KCDWater.asi is missing from the extracted folder." & goto :fail)
 if not exist "%SELF%\install\version.dll" (set "ERR=install\version.dll is missing from the extracted folder." & goto :fail)
 call :size "%SELF%\install\KCDGrassFix.asi" SZ
 if not "%SZ%"=="%ASI_SIZE%" (set "ERR=install\KCDGrassFix.asi is damaged. Download the mod again." & goto :fail)
+call :size "%SELF%\install\KCDWater.asi" SZ
+if not "%SZ%"=="%WATER_SIZE%" (set "ERR=install\KCDWater.asi is damaged. Download the mod again." & goto :fail)
 call :size "%SELF%\install\version.dll" SZ
 if not "%SZ%"=="%UAL_SIZE%" (set "ERR=install\version.dll is damaged. Download the mod again." & goto :fail)
 
+if exist "%B%\KCDDLSS.asi" goto :grassoff
 copy /y /b "%SELF%\install\KCDGrassFix.asi" "%B%\KCDGrassFix.asi" >nul || goto :copyfail
-del /q "%B%\KCDGrassFix.log" 2>nul
-echo Plugin: Bin\Win64\KCDGrassFix.asi copied.
+del /q "%B%\KCDGrassFix.asi.off" "%B%\KCDGrassFix.log" 2>nul
+echo Grass: Bin\Win64\KCDGrassFix.asi copied.
+goto :water
+:grassoff
+copy /y /b "%SELF%\install\KCDGrassFix.asi" "%B%\KCDGrassFix.asi.off" >nul || goto :copyfail
+del /q "%B%\KCDGrassFix.asi" "%B%\KCDGrassFix.log" 2>nul
+echo Grass: Native DLSS Support is installed and already contains the grass fix.
+echo        The grass plugin is stored as KCDGrassFix.asi.off (not loaded). If you uninstall
+echo        the DLSS mod, its uninstaller turns it back on.
+:water
+copy /y /b "%SELF%\install\KCDWater.asi" "%B%\KCDWater.asi" >nul || goto :copyfail
+del /q "%B%\KCDWater.log" 2>nul
+echo Water: Bin\Win64\KCDWater.asi copied.
 set "CUR="
 if exist "%B%\version.dll" call :size "%B%\version.dll" CUR
 if defined CUR if not "%CUR%"=="%UAL_SIZE%" goto :foreign
@@ -42,13 +63,15 @@ echo Loader: Bin\Win64\version.dll copied (Ultimate ASI Loader).
 goto :uninstaller
 :foreign
 echo Loader: Bin\Win64\version.dll is already there and is a different file. Left alone.
-echo         If it is an ASI loader, the fix loads through it. Check Bin\Win64\KCDGrassFix.log after a start.
+echo         If it is an ASI loader, the fix loads through it. Check Bin\Win64\KCDWater.log after a start.
 
 :uninstaller
-copy /y "%SELF%\Uninstall-Windows.bat" "%GAME%\30FPSGrassFix-Uninstall.bat" >nul && echo Uninstaller copied to the game folder: 30FPSGrassFix-Uninstall.bat
+del /q "%GAME%\30FPSGrassFix-Uninstall.bat" 2>nul
+copy /y "%SELF%\Uninstall-Windows.bat" "%GAME%\30FPSGrassWaterFix-Uninstall.bat" >nul && echo Uninstaller copied to the game folder: 30FPSGrassWaterFix-Uninstall.bat
 echo.
 echo Done. No launch options are needed on Windows. Start the game.
-echo Bin\Win64\KCDGrassFix.log then says "grass fix applied".
+echo Bin\Win64\KCDGrassFix.log then says "grass fix applied" (with the DLSS mod: KCDDLSS.log)
+echo and Bin\Win64\KCDWater.log says "mode 1 (smooth ripples)".
 echo.
 pause
 exit /b 0

@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Unit tests for Install-/Uninstall-Linux-SteamDeck.sh against fake Steam setups (no real game,
 # no real Steam is touched: HOME points into a temp folder, pgrep is a stand-in).
-#   bash test_linux_install.sh BUILT_FOLDER     (dist/single/30FPSGrassFix, made by build_release.sh)
+#   bash test_linux_install.sh BUILT_FOLDER     (dist/single/30FPSGrassWaterFix, made by build_release.sh)
 set -u
 PKG=$(cd "$1" && pwd -P)
 T=$(mktemp -d); trap 'rm -rf "$T"' EXIT
@@ -72,7 +72,7 @@ OUT=1
 echo "1. install, Steam closed"
 setup; run "$PKG/Install-Linux-SteamDeck.sh"
 check "exit 0" '[ $RC = 0 ]'
-check "plugin + loader copied" '[ "$(sha256sum "$B/KCDGrassFix.asi" | cut -d" " -f1)" = "$(asi_sha KCDGrassFix.asi)" ] && [ "$(sha256sum "$B/version.dll" | cut -d" " -f1)" = "$(asi_sha version.dll)" ]'
+check "plugins + loader copied" '[ "$(sha256sum "$B/KCDGrassFix.asi" | cut -d" " -f1)" = "$(asi_sha KCDGrassFix.asi)" ] && [ "$(sha256sum "$B/KCDWater.asi" | cut -d" " -f1)" = "$(asi_sha KCDWater.asi)" ] && [ "$(sha256sum "$B/version.dll" | cut -d" " -f1)" = "$(asi_sha version.dll)" ]'
 check "prefix line added once, inside DllOverrides" '[ "$(regline)" = 1 ] && awk "/DllOverrides/{f=1} f&&/^\$/{exit} f&&/\"version\"=\"native,builtin\"/{ok=1} END{exit !ok}" "$REG"'
 check "prefix: only that line changed" '[ "$(diff "$T/fake/reg.orig" "$REG" | grep -c "^[<>]")" = 1 ]'
 check "launch option user 111" '[ "$(lo "$LC1")" = "$WANT" ]'
@@ -80,7 +80,7 @@ check "user 111: only that line changed" '[ "$(diff "$T/fake/lc1.orig" "$LC1" | 
 check "launch option user 222 (block created)" '[ "$(lo "$LC2")" = "WINEDLLOVERRIDES=\\\"version=n,b\\\" %command%" ]'
 check "other game untouched" 'grep -qF "\"-novid \\\"quoted\\\"\"" "$LC1"'
 check "backups kept" '[ -f "$REG.grassfix-backup" ] && [ -f "$LC1.grassfix-backup" ]'
-check "uninstaller in game folder" '[ -x "$GAME/30FPSGrassFix-Uninstall.sh" ] || [ -f "$GAME/30FPSGrassFix-Uninstall.sh" ]'
+check "uninstaller in game folder" '[ -x "$GAME/30FPSGrassWaterFix-Uninstall.sh" ] || [ -f "$GAME/30FPSGrassWaterFix-Uninstall.sh" ]'
 cp -p "$LC1" "$T/fake/lc1.after"
 
 echo "2. install again"
@@ -90,9 +90,9 @@ check "no second prefix line" '[ "$(regline)" = 1 ]'
 check "launch options unchanged" 'cmp -s "$LC1" "$T/fake/lc1.after"'
 
 echo "3. uninstall from the game folder"
-run "$GAME/30FPSGrassFix-Uninstall.sh"
+run "$GAME/30FPSGrassWaterFix-Uninstall.sh"
 check "exit 0" '[ $RC = 0 ]'
-check "files gone" '[ ! -e "$B/KCDGrassFix.asi" ] && [ ! -e "$B/version.dll" ] && [ ! -e "$B/Ultimate-ASI-Loader-LICENSE.txt" ] && [ ! -e "$GAME/30FPSGrassFix-Uninstall.sh" ]'
+check "files gone" '[ ! -e "$B/KCDGrassFix.asi" ] && [ ! -e "$B/KCDWater.asi" ] && [ ! -e "$B/version.dll" ] && [ ! -e "$B/Ultimate-ASI-Loader-LICENSE.txt" ] && [ ! -e "$GAME/30FPSGrassWaterFix-Uninstall.sh" ]'
 check "prefix back to the original bytes" 'cmp -s "$REG" "$T/fake/reg.orig"'
 check "user 111 back to the original bytes" 'cmp -s "$LC1" "$T/fake/lc1.orig"'
 check "user 222 has no override left" '! grep -q WINEDLLOVERRIDES "$LC2"'
@@ -108,7 +108,7 @@ echo "4b. install again with Steam running, launch option already there"
 setup; run "$PKG/Install-Linux-SteamDeck.sh"; echo 1000 > "$T/fake/steam_left"; run "$PKG/Install-Linux-SteamDeck.sh"
 check "says already set, no prompt, no note" '[ $RC = 0 ] && grep -q "launch option: already set" "$T/out" && ! grep -q "Steam is running" "$T/out"'
 echo "4c. uninstall, Steam running, launch option never set"
-setup; echo 1000 > "$T/fake/steam_left"; run "$PKG/Install-Linux-SteamDeck.sh"; run "$GAME/30FPSGrassFix-Uninstall.sh"
+setup; echo 1000 > "$T/fake/steam_left"; run "$PKG/Install-Linux-SteamDeck.sh"; run "$GAME/30FPSGrassWaterFix-Uninstall.sh"
 check "nothing to remove, no prompt" '[ $RC = 0 ] && grep -q "not set, nothing to remove" "$T/out" && ! grep -q "Steam is running" "$T/out" && cmp -s "$REG" "$T/fake/reg.orig"'
 
 echo "5. install, Steam running, game never started (no prefix)"
@@ -133,12 +133,12 @@ fi
 
 echo "9. game running"
 setup; touch "$T/fake/game"; run "$PKG/Install-Linux-SteamDeck.sh"
-check "refused, nothing changed" '[ $RC = 1 ] && [ ! -e "$B/KCDGrassFix.asi" ] && cmp -s "$REG" "$T/fake/reg.orig" && cmp -s "$LC1" "$T/fake/lc1.orig"'
+check "refused, nothing changed" '[ $RC = 1 ] && [ ! -e "$B/KCDGrassFix.asi" ] && [ ! -e "$B/KCDWater.asi" ] && cmp -s "$REG" "$T/fake/reg.orig" && cmp -s "$LC1" "$T/fake/lc1.orig"'
 
 echo "10. another version.dll already there"
 setup; echo other > "$B/version.dll"; run "$PKG/Install-Linux-SteamDeck.sh"
 check "left alone, plugin copied" '[ $RC = 0 ] && [ "$(cat "$B/version.dll")" = other ] && [ -f "$B/KCDGrassFix.asi" ] && grep -q "different file. Left alone" "$T/out"'
-run "$GAME/30FPSGrassFix-Uninstall.sh"
+run "$GAME/30FPSGrassWaterFix-Uninstall.sh"
 check "uninstall keeps the other version.dll" '[ "$(cat "$B/version.dll")" = other ] && [ ! -e "$B/KCDGrassFix.asi" ]'
 
 echo "11. damaged download"
@@ -146,16 +146,38 @@ setup; cp -a "$PKG" "$T/pkg"; echo x >> "$T/pkg/install/KCDGrassFix.asi"; run "$
 check "refused, nothing changed" '[ $RC = 1 ] && [ ! -e "$B/KCDGrassFix.asi" ] && grep -q damaged "$T/out"'
 
 echo "12. uninstall while another .asi plugin remains"
-setup; run "$PKG/Install-Linux-SteamDeck.sh"; echo p > "$B/Other.asi"; run "$GAME/30FPSGrassFix-Uninstall.sh"
-check "loader, prefix line and launch option kept" '[ -f "$B/version.dll" ] && [ "$(regline)" = 1 ] && [ "$(lo "$LC1")" = "$WANT" ] && [ ! -e "$B/KCDGrassFix.asi" ]'
+setup; run "$PKG/Install-Linux-SteamDeck.sh"; echo p > "$B/Other.asi"; run "$GAME/30FPSGrassWaterFix-Uninstall.sh"
+check "loader, prefix line and launch option kept" '[ -f "$B/version.dll" ] && [ "$(regline)" = 1 ] && [ "$(lo "$LC1")" = "$WANT" ] && [ ! -e "$B/KCDGrassFix.asi" ] && [ ! -e "$B/KCDWater.asi" ]'
 
 echo "13. prefix already sets version.dll differently"
 setup; sed -i 's/^"atl100"=/"version"="builtin"\n"atl100"=/' "$REG"; cp -p "$REG" "$T/fake/reg.orig"; run "$PKG/Install-Linux-SteamDeck.sh"
 check "prefix left alone, launch option still set" 'cmp -s "$REG" "$T/fake/reg.orig" && [ "$(lo "$LC1")" = "$WANT" ]'
 
 echo "14. uninstall with Steam running, no terminal"
-setup; run "$PKG/Install-Linux-SteamDeck.sh"; echo 1000 > "$T/fake/steam_left"; run "$GAME/30FPSGrassFix-Uninstall.sh"
+setup; run "$PKG/Install-Linux-SteamDeck.sh"; echo 1000 > "$T/fake/steam_left"; run "$GAME/30FPSGrassWaterFix-Uninstall.sh"
 check "files + prefix removed, launch option left, user told" '[ ! -e "$B/version.dll" ] && cmp -s "$REG" "$T/fake/reg.orig" && [ "$(lo "$LC1")" = "$WANT" ] && grep -q "Remove WINEDLLOVERRIDES" "$T/out"'
+
+echo "15. damaged water plugin"
+setup; cp -a "$PKG" "$T/pkg"; echo x >> "$T/pkg/install/KCDWater.asi"; run "$T/pkg/Install-Linux-SteamDeck.sh"; rm -rf "$T/pkg"
+check "refused, nothing changed" '[ $RC = 1 ] && [ ! -e "$B/KCDGrassFix.asi" ] && [ ! -e "$B/KCDWater.asi" ] && grep -q damaged "$T/out"'
+
+echo "16. Native DLSS Support already installed (it contains the grass fix)"
+setup; echo d > "$B/KCDDLSS.asi"; cp "$PKG/install/version.dll" "$B/version.dll"; run "$PKG/Install-Linux-SteamDeck.sh"
+check "grass stored as .off, water installed" '[ $RC = 0 ] && [ ! -e "$B/KCDGrassFix.asi" ] && [ "$(sha256sum "$B/KCDGrassFix.asi.off" | cut -d" " -f1)" = "$(asi_sha KCDGrassFix.asi)" ] && [ -f "$B/KCDWater.asi" ] && grep -q "already contains the grass fix" "$T/out"'
+run "$GAME/30FPSGrassWaterFix-Uninstall.sh"
+check "uninstall: both plugins gone, DLSS mod and loader kept" '[ $RC = 0 ] && [ ! -e "$B/KCDGrassFix.asi.off" ] && [ ! -e "$B/KCDWater.asi" ] && [ -f "$B/KCDDLSS.asi" ] && [ -f "$B/version.dll" ] && [ "$(regline)" = 1 ] && [ "$(lo "$LC1")" = "$WANT" ]'
+
+echo "17. the DLSS mod is installed later and sets the grass plugin aside, then this mod is installed again"
+setup; run "$PKG/Install-Linux-SteamDeck.sh"; echo d > "$B/KCDDLSS.asi"; mv "$B/KCDGrassFix.asi" "$B/KCDGrassFix.asi.off"; run "$PKG/Install-Linux-SteamDeck.sh"
+check "grass stays .off, no active copy" '[ $RC = 0 ] && [ ! -e "$B/KCDGrassFix.asi" ] && [ -f "$B/KCDGrassFix.asi.off" ] && [ -f "$B/KCDWater.asi" ]'
+
+echo "18. update from 1.0.0 (old uninstaller and a stale .off in the game folder)"
+setup; echo old > "$GAME/30FPSGrassFix-Uninstall.sh"; echo stale > "$B/KCDGrassFix.asi.off"; run "$PKG/Install-Linux-SteamDeck.sh"
+check "old uninstaller and stale .off removed, new files in" '[ $RC = 0 ] && [ ! -e "$GAME/30FPSGrassFix-Uninstall.sh" ] && [ ! -e "$B/KCDGrassFix.asi.off" ] && [ -f "$B/KCDGrassFix.asi" ] && [ -f "$GAME/30FPSGrassWaterFix-Uninstall.sh" ]'
+
+echo "19. next to the other plugin mods (CPU Performance Patch): uninstall leaves them working"
+setup; run "$PKG/Install-Linux-SteamDeck.sh"; echo p > "$B/KCDPerf.asi"; echo i > "$B/KCDPerf.ini"; run "$GAME/30FPSGrassWaterFix-Uninstall.sh"
+check "KCDPerf files, loader, prefix line and launch option kept" '[ "$(cat "$B/KCDPerf.asi")" = p ] && [ "$(cat "$B/KCDPerf.ini")" = i ] && [ -f "$B/version.dll" ] && [ "$(regline)" = 1 ] && [ "$(lo "$LC1")" = "$WANT" ]'
 
 echo
 echo "passed $PASS, failed $FAIL"

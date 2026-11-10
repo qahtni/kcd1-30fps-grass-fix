@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# 30 FPS Grass Fix 1.0.0 - installer for Steam Deck / Linux (Proton).
+# 30 FPS Grass & Water Fix 1.1.0 - installer for Steam Deck / Linux (Proton).
 #   bash Install-Linux-SteamDeck.sh [game folder]
 # Run it from the extracted archive, wherever that is (for example Downloads).
 # It finds the game itself: in every Steam library (native and Flatpak Steam, SD cards and other
@@ -7,15 +7,20 @@
 # argument wins over all of that.
 # What it does (nothing else):
 #   1. Checks the game is closed.
-#   2. Copies install/KCDGrassFix.asi and install/version.dll (Ultimate ASI Loader) to Bin/Win64,
-#      next to KingdomCome.exe. A version.dll that is already there is left alone.
+#   2. Copies install/KCDGrassFix.asi (grass), install/KCDWater.asi (water ripples) and
+#      install/version.dll (Ultimate ASI Loader) to Bin/Win64, next to KingdomCome.exe.
+#      A different version.dll that is already there is left alone.
+#      If the mod "Native DLSS Support" (KCDDLSS.asi) is installed: it already contains the grass
+#      fix, so the grass plugin is stored as KCDGrassFix.asi.off (not loaded; the DLSS uninstaller
+#      turns it back on). The water plugin is installed as usual.
 #   3. Steam/Proton: adds the line "version"="native,builtin" to the game's Proton prefix
 #      (DLL overrides in user.reg, backup kept), so Proton loads version.dll from the game folder.
 #   4. Steam: puts WINEDLLOVERRIDES="version=n,b" in front of the game's launch options (the same
 #      setting, kept by Steam even if the prefix is reset). Steam has to be closed for this: it
 #      rewrites its settings file when it exits. If Steam is running, the installer asks you to close
 #      it, or tells you what to type into the launch options yourself. Backup kept.
-#   5. Copies the uninstaller to the game folder as 30FPSGrassFix-Uninstall.sh.
+#   5. Copies the uninstaller to the game folder as 30FPSGrassWaterFix-Uninstall.sh (and removes
+#      30FPSGrassFix-Uninstall.sh of version 1.0.0).
 # No game file is changed.
 set -u
 
@@ -26,6 +31,7 @@ if [ ! -t 1 ] && [ -z "${GAF_TERM:-}" ] && { [ -n "${DISPLAY:-}" ] || [ -n "${WA
 fi
 
 ASI_SHA=@ASI_SHA@   # install/KCDGrassFix.asi
+WATER_SHA=@WATER_SHA@   # install/KCDWater.asi
 UAL_SHA=@UAL_SHA@   # install/version.dll
 LINE='"version"="native,builtin"'
 die() { echo; echo "ERROR: $*"; echo "Nothing more was changed."; exit 1; }
@@ -87,7 +93,7 @@ prefix_busy() {  # is a wineserver of this prefix still alive? (it rewrites user
 }
 
 SELF=$(cd "$(dirname "$0")" && pwd -P)
-echo "30 FPS Grass Fix 1.0.0 - install"
+echo "30 FPS Grass & Water Fix 1.1.0 - install"
 if [ $# -ge 1 ]; then
   is_game "$1" || die "No Kingdom Come: Deliverance in $1 (it needs Bin/Win64/KingdomCome.exe)."
   GAME=$(cd "$1" && pwd -P)
@@ -109,16 +115,29 @@ fi
 echo "Game folder: $GAME"
 B=$GAME/Bin/Win64
 pgrep -f '[K]ingdomCome\.exe' >/dev/null && die "The game is running. Close it first."
-[ -f "$SELF/install/KCDGrassFix.asi" ] && [ -f "$SELF/install/version.dll" ] || die "The install folder is missing from $SELF."
+[ -f "$SELF/install/KCDGrassFix.asi" ] && [ -f "$SELF/install/KCDWater.asi" ] && [ -f "$SELF/install/version.dll" ] || die "The install folder is missing from $SELF."
 [ "$(sha "$SELF/install/KCDGrassFix.asi")" = "$ASI_SHA" ] || die "install/KCDGrassFix.asi is damaged. Download the mod again."
+[ "$(sha "$SELF/install/KCDWater.asi")" = "$WATER_SHA" ] || die "install/KCDWater.asi is damaged. Download the mod again."
 [ "$(sha "$SELF/install/version.dll")" = "$UAL_SHA" ] || die "install/version.dll is damaged. Download the mod again."
 
-# 1. The two files next to KingdomCome.exe
-cp -f "$SELF/install/KCDGrassFix.asi" "$B/KCDGrassFix.asi" || die "Could not copy KCDGrassFix.asi to $B."
-echo "Plugin: Bin/Win64/KCDGrassFix.asi copied."
+# 1. The files next to KingdomCome.exe
+if [ -e "$B/KCDDLSS.asi" ]; then
+  cp -f "$SELF/install/KCDGrassFix.asi" "$B/KCDGrassFix.asi.off" || die "Could not copy KCDGrassFix.asi to $B."
+  rm -f "$B/KCDGrassFix.asi" "$B/KCDGrassFix.log"
+  echo "Grass: Native DLSS Support is installed and already contains the grass fix."
+  echo "       The grass plugin is stored as KCDGrassFix.asi.off (not loaded). If you uninstall"
+  echo "       the DLSS mod, its uninstaller turns it back on."
+else
+  cp -f "$SELF/install/KCDGrassFix.asi" "$B/KCDGrassFix.asi" || die "Could not copy KCDGrassFix.asi to $B."
+  rm -f "$B/KCDGrassFix.asi.off" "$B/KCDGrassFix.log"
+  echo "Grass: Bin/Win64/KCDGrassFix.asi copied."
+fi
+cp -f "$SELF/install/KCDWater.asi" "$B/KCDWater.asi" || die "Could not copy KCDWater.asi to $B."
+rm -f "$B/KCDWater.log"
+echo "Water: Bin/Win64/KCDWater.asi copied."
 if [ -e "$B/version.dll" ] && [ "$(sha "$B/version.dll")" != "$UAL_SHA" ]; then
   echo "Loader: Bin/Win64/version.dll is already there and is a different file. Left alone."
-  echo "        If it is an ASI loader, the fix loads through it. Check Bin/Win64/KCDGrassFix.log after a start."
+  echo "        If it is an ASI loader, the fix loads through it. Check Bin/Win64/KCDWater.log after a start."
 else
   cp -f "$SELF/install/version.dll" "$B/version.dll" || die "Could not copy version.dll to $B."
   cp -f "$SELF/install/Ultimate-ASI-Loader-LICENSE.txt" "$B/Ultimate-ASI-Loader-LICENSE.txt" 2>/dev/null
@@ -185,8 +204,10 @@ if [ $LO = 0 ]; then
   echo "  Heroic/Lutris: add the environment variable WINEDLLOVERRIDES with the value version=n,b"
 fi
 
-cp -f "$SELF/Uninstall-Linux-SteamDeck.sh" "$GAME/30FPSGrassFix-Uninstall.sh" &&
-  echo "Uninstaller copied to the game folder: 30FPSGrassFix-Uninstall.sh"
+rm -f "$GAME/30FPSGrassFix-Uninstall.sh"
+cp -f "$SELF/Uninstall-Linux-SteamDeck.sh" "$GAME/30FPSGrassWaterFix-Uninstall.sh" &&
+  echo "Uninstaller copied to the game folder: 30FPSGrassWaterFix-Uninstall.sh"
 echo
-echo "Done. Start the game. Bin/Win64/KCDGrassFix.log then says \"grass fix applied\"."
-echo "If that file does not appear, the loader did not start: see README.txt."
+echo "Done. Start the game. Bin/Win64/KCDGrassFix.log then says \"grass fix applied\" (with the DLSS mod:"
+echo "KCDDLSS.log) and Bin/Win64/KCDWater.log says \"mode 1 (smooth ripples)\"."
+echo "If KCDWater.log does not appear, the loader did not start: see README.txt."

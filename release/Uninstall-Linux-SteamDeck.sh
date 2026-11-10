@@ -1,10 +1,11 @@
 #!/usr/bin/env bash
-# 30 FPS Grass Fix 1.0.0 - uninstaller for Steam Deck / Linux (Proton).
-#   bash 30FPSGrassFix-Uninstall.sh            (in the game folder, put there by the installer)
+# 30 FPS Grass & Water Fix 1.1.0 - uninstaller for Steam Deck / Linux (Proton).
+#   bash 30FPSGrassWaterFix-Uninstall.sh       (in the game folder, put there by the installer)
 #   bash Uninstall-Linux-SteamDeck.sh [game folder] (in the extracted archive)
 # What it does (nothing else):
 #   1. Checks the game is closed.
-#   2. Deletes Bin/Win64/KCDGrassFix.asi and KCDGrassFix.log.
+#   2. Deletes Bin/Win64/KCDGrassFix.asi (or KCDGrassFix.asi.off), KCDWater.asi and their
+#      .log/.ini/.cmd files.
 #   3. Deletes Bin/Win64/version.dll if it is the loader this mod installed and no other .asi
 #      plugin is left there (another plugin would still need it).
 #   4. If the loader was deleted: removes the line "version"="native,builtin" from the game's
@@ -78,7 +79,7 @@ prefix_busy() {
 }
 
 SELF=$(cd "$(dirname "$0")" && pwd -P)
-echo "30 FPS Grass Fix 1.0.0 - uninstall"
+echo "30 FPS Grass & Water Fix 1.1.0 - uninstall"
 if [ $# -ge 1 ]; then
   is_game "$1" || die "No Kingdom Come: Deliverance in $1 (it needs Bin/Win64/KingdomCome.exe)."
   GAME=$(cd "$1" && pwd -P)
@@ -92,7 +93,9 @@ echo "Game folder: $GAME"
 B=$GAME/Bin/Win64
 pgrep -f '[K]ingdomCome\.exe' >/dev/null && die "The game is running. Close it first."
 
-rm -f "$B/KCDGrassFix.asi" "$B/KCDGrassFix.log" && echo "Plugin: Bin/Win64/KCDGrassFix.asi removed."
+rm -f "$B/KCDGrassFix.asi" "$B/KCDGrassFix.asi.off" "$B/KCDGrassFix.log" "$B/KCDWater.asi" "$B/KCDWater.log" "$B/KCDWater.ini" "$B/KCDWater.cmd" &&
+  echo "Plugins: Bin/Win64/KCDGrassFix.asi and KCDWater.asi removed."
+[ -e "$B/KCDDLSS.asi" ] && echo "Note: Native DLSS Support is still installed and keeps its own grass fix."
 LOADER_GONE=0
 if [ ! -e "$B/version.dll" ]; then
   echo "Loader: no version.dll there."; LOADER_GONE=1
@@ -136,6 +139,6 @@ if [ $LOADER_GONE = 1 ]; then
   fi
 fi
 
-rm -f "$GAME/30FPSGrassFix-Uninstall.sh"
+rm -f "$GAME/30FPSGrassFix-Uninstall.sh" "$GAME/30FPSGrassWaterFix-Uninstall.sh"
 echo
-echo "Done. The game is back to its original grass animation."
+echo "Done. The game is back to its original grass and water ripple animation."

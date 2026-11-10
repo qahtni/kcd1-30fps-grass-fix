@@ -1,45 +1,51 @@
 @echo off
 setlocal EnableExtensions DisableDelayedExpansion
-rem 30 FPS Grass Fix 1.0.0 - uninstaller for Windows.
-rem Works from the game folder (the installer leaves a copy there as 30FPSGrassFix-Uninstall.bat)
+rem 30 FPS Grass and Water Fix 1.1.0 - uninstaller for Windows.
+rem Works from the game folder (the installer leaves a copy there as 30FPSGrassWaterFix-Uninstall.bat)
 rem or from the extracted archive (it then finds the game the same way the installer does; or drag
 rem the game folder onto this file).
 rem What it does:
-rem   1. Deletes Bin\Win64\KCDGrassFix.asi and KCDGrassFix.log.
+rem   1. Deletes Bin\Win64\KCDGrassFix.asi (or KCDGrassFix.asi.off), KCDWater.asi and their .log/.ini/.cmd files.
 rem   2. Deletes Bin\Win64\version.dll if it is the loader this mod installed and no other .asi
 rem      plugin is left in Bin\Win64 (another plugin would still need it).
-rem   3. Deletes 30FPSGrassFix-Uninstall.bat from the game folder.
-title 30 FPS Grass Fix - uninstall
+rem   3. Deletes 30FPSGrassWaterFix-Uninstall.bat (and 30FPSGrassFix-Uninstall.bat of 1.0.0) from the game folder.
+title 30 FPS Grass ^& Water Fix - uninstall
 set "UAL_SIZE=@UAL_SIZE@"
 set "SELF=%~dp0"
 set "SELF=%SELF:~0,-1%"
 set "ARG=%~1"
-echo 30 FPS Grass Fix 1.0.0 - uninstall
+echo 30 FPS Grass ^& Water Fix 1.1.0 - uninstall
 call :findgame
 if not defined GAME goto :nogame
 echo Game folder: "%GAME%"
 set "B=%GAME%\Bin\Win64"
 tasklist /fi "imagename eq KingdomCome.exe" 2>nul | find /i "KingdomCome.exe" >nul && goto :running
 
-del /q "%B%\KCDGrassFix.asi" "%B%\KCDGrassFix.log" 2>nul
+del /q "%B%\KCDGrassFix.asi" "%B%\KCDGrassFix.asi.off" "%B%\KCDGrassFix.log" 2>nul
+del /q "%B%\KCDWater.asi" "%B%\KCDWater.log" "%B%\KCDWater.ini" "%B%\KCDWater.cmd" 2>nul
 if exist "%B%\KCDGrassFix.asi" (set "ERR=Could not delete Bin\Win64\KCDGrassFix.asi. Try right-click, Run as administrator." & goto :fail)
-echo Plugin: Bin\Win64\KCDGrassFix.asi removed.
+if exist "%B%\KCDWater.asi" (set "ERR=Could not delete Bin\Win64\KCDWater.asi. Try right-click, Run as administrator." & goto :fail)
+echo Plugins: Bin\Win64\KCDGrassFix.asi and KCDWater.asi removed.
+if exist "%B%\KCDDLSS.asi" echo Note: Native DLSS Support is still installed and keeps its own grass fix.
 if not exist "%B%\version.dll" (echo Loader: no version.dll there.& goto :done)
 call :size "%B%\version.dll" CUR
 if not "%CUR%"=="%UAL_SIZE%" (echo Loader: Bin\Win64\version.dll is not the file this mod installs. Left alone.& goto :done)
 set "OTHER="
-for %%F in ("%B%\*.asi" "%B%\scripts\*.asi" "%B%\plugins\*.asi") do set "OTHER=1"
+if exist "%B%\*.asi" set "OTHER=1"
+if exist "%B%\scripts\*.asi" set "OTHER=1"
+if exist "%B%\plugins\*.asi" set "OTHER=1"
 if defined OTHER (echo Loader: another .asi plugin is still in Bin\Win64. version.dll left in place for it.& goto :done)
 del /q "%B%\version.dll" "%B%\Ultimate-ASI-Loader-LICENSE.txt" 2>nul
 echo Loader: Bin\Win64\version.dll removed.
 
 :done
 echo.
-echo Done. The game is back to its original grass animation.
+echo Done. The game is back to its original grass and water ripple animation.
 echo.
 pause
-if /i "%SELF%"=="%GAME%" goto :delself
 del /q "%GAME%\30FPSGrassFix-Uninstall.bat" 2>nul
+if /i "%SELF%"=="%GAME%" goto :delself
+del /q "%GAME%\30FPSGrassWaterFix-Uninstall.bat" 2>nul
 exit /b 0
 :delself
 (goto) 2>nul & del /q "%~f0"

@@ -1,4 +1,4 @@
-# 30 FPS Grass Fix: Steam launch option for Kingdom Come: Deliverance (app 379430).
+# 30 FPS Grass & Water Fix: Steam launch option for Kingdom Come: Deliverance (app 379430).
 #   python3 -I launch_option.py add|remove|suggest|check LOCALCONFIG.vdf...
 # add     puts WINEDLLOVERRIDES="version=n,b" in front of the launch options (merged into an
 #         existing WINEDLLOVERRIDES), so Proton loads version.dll from the game folder.

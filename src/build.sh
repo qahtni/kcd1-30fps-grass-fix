@@ -1,5 +1,5 @@
 #!/bin/bash
-# Build KCDGrassFix.asi (x64, no C runtime) and the Wine test harness into src/out/.
+# Build KCDGrassFix.asi and KCDWater.asi (x64, no C runtime) and the Wine test harness into src/out/.
 # Needs mingw-w64 (x86_64-w64-mingw32-gcc, -windres, -objdump).
 # usage: ./build.sh                     build from the committed sig.h
 #        ./build.sh /path/to/WHGame.dll first regenerate sig.h from your own stock WHGame.dll
@@ -18,5 +18,10 @@ x86_64-w64-mingw32-gcc -Os -s -Wall -Wextra -ffreestanding -fno-builtin -fno-sta
   -shared -nostdlib -nostartfiles -Wl,-e,DllMain -Wl,--dynamicbase,--nxcompat,--high-entropy-va \
   -Wl,--no-insert-timestamp -o out/KCDGrassFix.asi kcd_grass_fix.c out/version.res -lkernel32
 x86_64-w64-mingw32-gcc -O1 -Wall -static -o out/test_asi.exe test_asi.c
-ls -l out/KCDGrassFix.asi out/test_asi.exe; sha256sum out/KCDGrassFix.asi
+# water ripple fix (KCDWater.asi): built from the committed water/sig.h
+x86_64-w64-mingw32-gcc -O2 -s -Wall -Wextra -ffreestanding -fno-builtin -fno-stack-protector \
+  -fno-asynchronous-unwind-tables -fno-tree-loop-distribute-patterns -fno-ident -mno-stack-arg-probe \
+  -shared -nostdlib -nostartfiles -Wl,-e,DllMain -Wl,--dynamicbase,--nxcompat,--high-entropy-va \
+  -Wl,--no-insert-timestamp -o out/KCDWater.asi water/kcd_water.c -lkernel32
+ls -l out/KCDGrassFix.asi out/KCDWater.asi out/test_asi.exe; sha256sum out/KCDGrassFix.asi out/KCDWater.asi
 x86_64-w64-mingw32-objdump -p out/KCDGrassFix.asi | grep -E "DLL Name|^\s+[0-9a-f]+\s+[0-9]+\s+\w+$" | head -40

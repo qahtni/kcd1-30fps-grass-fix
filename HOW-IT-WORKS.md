@@ -53,9 +53,27 @@ Measured in the running game at 120 fps, following single grass points for 95 fr
 
 The total path is the same; the fix splits each jump into one small move per frame. For calm grass a few metres away that jump is about a pixel. Short, fast-shaking tufts close to the camera show it clearly. At 30 fps or below there is nothing to blend.
 
+## Water ripples: the same problem, a different fix
+
+The ripples on water come from a small simulation that runs on the graphics card (`CWaterRipples::Render`). The game runs one step of it when at least 25 ms have passed since the last one, and checks that once per frame: 30 steps a second at 60 fps, 40 at most. The water shaders read the same ripple texture until the next step, so the rings move in steps whatever the frame rate is.
+
+`KCDWater.asi` hooks that one function and leaves the simulation alone:
+
+- right before a step it puts the true ripple state back into the game's texture, so the simulation reads exactly what it would read without the mod;
+- after a step it keeps the new state and the one before it;
+- on every frame it writes a blend of the two into the texture the water shaders read: `previous + (current - previous) x (time since the step / 25 ms)`, then rebuilds the texture's mip levels.
+
+The blend is drawn with a shader technique the game already ships (`BlurInterpolation`, a plain mix of two textures), through the game's own render functions. No shader and no game file is changed. When the simulation re-centres itself around the camera (about every 5 m of travel) the previous state no longer lines up, and that one step is shown without a blend.
+
+Every assumption the plugin makes is checked while the game runs (texture formats and sizes, the shader pass, the thread, one GPU). If a check fails, that call falls back to the game's own behaviour; if one of its own textures is lost, the water fix switches itself off for the session and says so in `KCDWater.log`.
+
+Settings and test commands: one command per line in `Bin\Win64\KCDWater.ini` (read at start) or `KCDWater.cmd` (read while the game runs, then deleted). `mode 0` = the game's own ripples, `mode 1` = smooth (the default), `stats` = counters in the log. `step N` makes the simulation step only every N ms and `gun N` adds N ripple hits a second around the camera: both are test tools that make the difference easy to film, not settings to play with.
+
+The source is in [src/water/](src/water/): `kcd_water.c`, the generated `sig.h` (byte patterns and decode tables for Steam 1.9.8), `gen_sig.py` (makes `sig.h` from your own stock `WHGame.dll`) and `check_bind.py` (replays the plugin's search against a DLL file).
+
 ## Testing
 
 - [src/test_asi.c](src/test_asi.c) maps a real `WHGame.dll` under Wine or Windows, loads the plugin and checks that exactly the 10 hook bytes changed, that the new code equals the built bytes and that both pages have the right protection. Cases checked during development, all as expected: stock DLL (fix applied), plugin loaded before the DLL (waits, then applies), one byte of the loop altered (found 0 times, nothing changed), the loop present twice (found 2 times, nothing changed), the code after the hook altered (nothing changed).
 - The new machine code was also run natively against reference arithmetic: 200,000 random cases matched bit for bit.
 - Real game: the fix loaded ("grass fix applied") on Windows 11, Steam Deck (SteamOS 3.9.5) and Bazzite.
-- [release/test_linux_install.sh](release/test_linux_install.sh): 36 tests of the Linux installer and uninstaller against fake Steam setups (Steam running or closed, several libraries, launch options already set, a foreign `version.dll`, a damaged download).
+- [release/test_linux_install.sh](release/test_linux_install.sh): 42 tests of the Linux installer and uninstaller against fake Steam setups (Steam running or closed, several libraries, launch options already set, a foreign `version.dll`, a damaged download, Native DLSS Support and the CPU Performance Patch installed next to it, an update from 1.0.0).
